@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const config = require('./config/key');
 
 const { User } = require('./models/User');
+const { auth } = require('./middleware/auth');
 
 app.use(bodyParser.urlencoded({extended: true}));
 
@@ -21,9 +22,10 @@ app.get('/', (req, res) => {
   res.send('Hello World!')
 });
 
-app.post('/register', (req, res) => {
+app.post('/api/user/register', (req, res) => {
   // Save account information from client to DB
   const user = new User(req.body);
+
   user.save((err, userInfo) => {
     if(err) return res.json({success: false, err})
     return res.status(200).json({
@@ -32,7 +34,7 @@ app.post('/register', (req, res) => {
   })
 });
 
-app.post('/login', (req, res) => {
+app.post('/api/user/login', (req, res) => {
   //Check if user information exists
   User.findOne({email: req.body.email}, (err, userInfo) => {
     if(!userInfo) {
@@ -67,6 +69,31 @@ app.post('/login', (req, res) => {
   });
 });
 
+app.get('/api/user/auth', auth, (req, res) => {
+  res.status(200).json({
+    _id: req.user._id,
+    isAdmin: req.user.role === 0 ? false : true,
+    isAuth: true,
+    email: req.user.email,
+    firstname: req.user.firstname,
+    lastname: req.user.lastname,
+    role: req.user.role,
+    image: req.user.image
+  });
+});
+
+app.get('/api/user/logout', auth, (req, res) => {
+  User.findOneAndUpdate({_id: req.user._id}, 
+    { token : ""},
+    (err, user) => {
+      if(err) return res.json({ success: false, err});
+
+      return res.status(200).json({
+        success: true
+      });
+    });
+});
+
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+  console.log('Example app listening on port ${port}');
 });
